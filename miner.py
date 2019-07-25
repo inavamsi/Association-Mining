@@ -99,15 +99,18 @@ def join_str(list):
     return result
 
 #checks whether two phrases match given a score and error
-def term_match(l1,l2, score, flag, error,throw):
+def term_match(l1,l2, score, flag, error,throw,stemm):
     #regulation, assembly, activation, developement, tissue, cell
     #throw=[]#'metabolic', 'assembly', 'developement', 'tissue', 'cell','pathway']
     #l1=[(lemmatizer.lemmatize(i)).lower() for i in l1 if i not in throw]
     #l2=[(lemmatizer.lemmatize(i)).lower()  for i in l2 if i not in throw]
    # l2=[i for i in l2 if i not in ['regulation', 'assembly', 'activation', 'developement', 'tissue', 'cell', 'detection','pathway']]
-    
-    l1=[(lancaster.stem(lemmatizer.lemmatize(i))).lower() for i in l1 if i not in throw]
-    l2=[(lancaster.stem(lemmatizer.lemmatize(i))).lower()  for i in l2 if i not in throw]
+    if(stemm):
+        l1=[(lancaster.stem(lemmatizer.lemmatize(i))).lower() for i in l1 if i not in throw]
+        l2=[(lancaster.stem(lemmatizer.lemmatize(i))).lower()  for i in l2 if i not in throw]
+    else:
+        l1=[(lemmatizer.lemmatize(i)).lower() for i in l1 if i not in throw]
+        l2=[(lemmatizer.lemmatize(i)).lower()  for i in l2 if i not in throw]
 
     if len(l2)>1.5*len(l1):
         return False
@@ -178,7 +181,7 @@ def term_list(sent,fileobj, winlen, similarity_score):
             count+=1
             if(count==winlen+1):
                 prev_match=None
-            if term_match(sent[i:i+winlen],fileobj.vocab[j],similarity_score,fileobj.flag,fileobj.error,fileobj.throw):
+            if term_match(sent[i:i+winlen],fileobj.vocab[j],similarity_score,fileobj.flag,fileobj.error,fileobj.throw,fileobj.stem):
                 if(fileobj.orig[j]!=prev_match):
                     small_list.append(join_str(fileobj.orig[j]))
                     prev_match=fileobj.orig[j]
@@ -190,7 +193,7 @@ def term_list(sent,fileobj, winlen, similarity_score):
 
 # Class for each vocabulary namely HPO, GO, Gene Names, Protiens, pathways
 class Mine():
-    def __init__(self, name, filename,st,end,wordlist,flag, postfix, winlen_l, error,throw):
+    def __init__(self, name, filename,st,end,wordlist,flag, postfix, winlen_l, error,throw,stem):
         fo = open(filename, "r+")
         self.orig=[]
         for line in fo:
@@ -202,6 +205,7 @@ class Mine():
                 split_lines=line.split()[st:end]
             self.orig.append(split_lines)
 
+        self.stem=stem
         self.name=name
         self.throw=throw
         self.error=error
@@ -256,11 +260,11 @@ def print_associations(papers):
 
 
 #Create an instance for each vocabulary
-go = Mine('go',"terms.txt",2,-1,[],False,None,[3,4],1,['cell','pathway'])
-hpo = Mine('hpo',"all_hpo.txt",0,None,[],False,-1,[3,4],0,[])
-pcg = Mine('gene name',"uniprot.txt",-1,None,[],True,None,[1,2],0,[])
-protien = Mine('protien',"uniprot.txt",0,1,[],True,None,[1],0,[])
-pathways=Mine('pathways',"all_human_pathways.txt",1,-2,[],False,None,[3,4],1,['pathway'])
+go = Mine('go',"terms.txt",2,-1,[],False,None,[3,4],1,['cell','pathway','regulation','negative'],True)
+hpo = Mine('hpo',"all_hpo.txt",0,None,[],False,-1,[3,4],0,[],True)
+pcg = Mine('gene name',"uniprot.txt",-1,None,[],True,None,[1,2],0,[],False)
+protien = Mine('protien',"uniprot.txt",0,1,[],True,None,[1],0,[],False)
+pathways=Mine('pathways',"all_human_pathways.txt",1,-2,[],False,None,[3,4],1,['pathway'],True)
 
 #List of vocabularoes we will use
 file_list=[hpo,go,pcg,pathways,protien]
@@ -268,5 +272,5 @@ file_list=[hpo,go,pcg,pathways,protien]
 
 #Get paper abstracts and print associations
 uid_l=uid_from_file('union_training_uids.txt')
-papers=abs_list(uid_l,5)
+papers=abs_list(uid_l,20)
 print_associations(papers)
